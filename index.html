@@ -68,6 +68,23 @@
 .history-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0}
 .history-detail.show{display:block}
 @media(max-width:700px){.student-chip span.hide-mobile{display:none}.auth-card{padding:20px}.history-overlay{padding:10px}.history-card{margin:10px auto}}
+
+/* Admin control panel */
+.admin-btn{display:none}
+.admin-overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(6px);z-index:140;display:none;padding:18px;overflow:auto}
+.admin-overlay.show{display:flex;align-items:flex-start;justify-content:center}
+.admin-card{width:min(1120px,100%);margin:18px auto;background:#fff;border-radius:24px;box-shadow:0 30px 90px rgba(15,23,42,.3);overflow:hidden}
+.admin-head{padding:18px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-body{padding:20px}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.admin-stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px}
+.admin-table{width:100%;border-collapse:separate;border-spacing:0}
+.admin-table th,.admin-table td{padding:10px 9px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:12px;vertical-align:middle}
+.admin-table th{color:#64748b;background:#f8fafc;font-weight:800;position:sticky;top:0}
+.admin-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:16px}
+.admin-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
+.admin-pill.on{background:#ecfdf5;color:#047857}.admin-pill.off{background:#fff1f2;color:#be123c}
+@media(max-width:800px){.admin-grid{grid-template-columns:1fr}.admin-card{margin:4px auto}.admin-body{padding:12px}}
 </style>
 <!-- Supabase CDN 及客户端初始化 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -99,6 +116,7 @@
         <button id="historyBtn" onclick="openHistory()" class="hidden px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition">📊 记录</button>
         <button id="loginBtn" onclick="openAuth()" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition">学生登录</button>
         <button id="logoutBtn" onclick="logoutStudent()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition">退出</button>
+        <button id="adminBtn" onclick="openAdminGate()" class="px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 transition" title="教师管理员">⚙️ 管理</button>
 
         <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 font-mono text-sm">
           <svg class="w-4 h-4 mr-1.5 text-indigo-600 animate-spin" style="animation-duration: 4s;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,6 +159,49 @@
       </button>
     </div>
   </header>
+
+  <!-- Admin Control -->
+  <div id="adminOverlay" class="admin-overlay">
+    <div class="admin-card">
+      <div class="admin-head">
+        <div><div class="text-xs font-bold tracking-wider text-amber-600 uppercase">TEACHER ADMIN</div><h2 class="text-xl font-black text-slate-900 mt-1">学生账号管理</h2><p class="text-xs text-slate-500 mt-1">新增、停用、恢复、重置密码和永久删除学生账号。</p></div>
+        <button onclick="closeAdminPanel()" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-600">关闭</button>
+      </div>
+      <div class="admin-body">
+        <div id="adminMessage" class="hidden mb-4 text-xs rounded-xl p-3"></div>
+        <div class="admin-grid mb-4">
+          <div class="admin-stat"><div class="text-xs text-slate-500">学生总数</div><div id="adminTotal" class="text-2xl font-black mt-1">—</div></div>
+          <div class="admin-stat"><div class="text-xs text-slate-500">当前考试</div><div class="text-sm font-bold mt-2">2023年12月 JLPT N3</div></div>
+        </div>
+        <div class="admin-grid mb-4">
+          <div class="border border-slate-200 rounded-2xl p-4">
+            <div class="font-bold text-sm mb-3">添加学生账号</div>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adminStudentName" class="px-3 py-2.5 rounded-xl border border-slate-200 text-sm" placeholder="学生姓名">
+              <input id="adminStudentNo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-sm" placeholder="学号">
+            </div>
+            <input id="adminStudentPassword" type="password" class="w-full mt-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm" placeholder="初始密码（至少6位）">
+            <button onclick="adminCreateStudent()" class="w-full mt-2.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold">＋ 创建学生</button>
+          </div>
+          <div class="border border-slate-200 rounded-2xl p-4">
+            <div class="font-bold text-sm mb-3">批量导入</div>
+            <textarea id="adminBulkCsv" rows="5" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-mono" placeholder="姓名,学号,初始密码
+张三,20260001,abcdef123
+李四,20260002,abcdef123"></textarea>
+            <button onclick="adminBulkCreate()" class="w-full mt-2.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold">批量创建</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div class="font-bold text-sm">学生账号列表</div>
+          <button onclick="adminLoadStudents()" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold">↻ 刷新</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table"><thead><tr><th>姓名</th><th>学号</th><th>状态</th><th>考试记录</th><th>最后登录</th><th>操作</th></tr></thead><tbody id="adminStudentRows"><tr><td colspan="6" class="text-center text-slate-400 py-8">暂无数据</td></tr></tbody></table>
+        </div>
+        <div class="mt-3 text-[11px] text-slate-400 leading-relaxed">提示：停用账号不会删除成绩；“永久删除”会删除登录账号，并可能因数据库级联规则同时删除该学生的考试记录和草稿，请谨慎使用。</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Student Login -->
   <div id="authOverlay" class="auth-overlay hidden">
@@ -708,6 +769,8 @@
           student_no: user.user_metadata?.student_no || studentNo,
           student_name: user.user_metadata?.student_name || studentNo
         };
+        const profileCheck = await supabaseClient.from('jlpt_students').select('student_name,student_no,active').eq('id', user.id).maybeSingle();
+        if (profileCheck.data?.active === false) { await supabaseClient.auth.signOut(); currentStudent=null; throw new Error('该学生账号已被老师停用，请联系老师。'); }
         await ensureStudentProfile(user, currentStudent.student_no, currentStudent.student_name);
         await loadDraft();
         updateStudentUI();
@@ -738,6 +801,76 @@
       document.getElementById('historyBtn').classList.toggle('hidden', !logged);
       document.getElementById('studentChip').classList.toggle('show', logged);
       if (logged) document.getElementById('studentChipText').textContent = `${currentStudent.student_name} · ${currentStudent.student_no}`;
+    }
+
+    const ADMIN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/admin-student-manager`;
+    let adminSessionPassword = '';
+
+    function adminMsg(message, ok=false){
+      const el=document.getElementById('adminMessage');
+      el.textContent=message; el.className=`mb-4 text-xs rounded-xl p-3 ${ok?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`;
+    }
+    async function adminCall(action, payload={}){
+      if(!adminSessionPassword) throw new Error('管理员验证已失效，请重新验证。');
+      const res=await fetch(ADMIN_FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json','x-admin-password':adminSessionPassword},body:JSON.stringify({action,...payload})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error(data.error||`管理员接口错误（${res.status}）`);
+      return data;
+    }
+    async function openAdminGate(){
+      const pwd=prompt('请输入管理员总控制密码：');
+      if(pwd===null) return;
+      if(!pwd) return alert('请输入密码。');
+      adminSessionPassword=pwd;
+      try{
+        await adminCall('list');
+        document.getElementById('adminOverlay').classList.add('show');
+        adminMsg('管理员验证成功。',true);
+        await adminLoadStudents();
+      }catch(e){ adminSessionPassword=''; alert(e.message||'管理员验证失败。'); }
+    }
+    function closeAdminPanel(){ document.getElementById('adminOverlay').classList.remove('show'); adminSessionPassword=''; }
+    async function adminLoadStudents(){
+      try{
+        const data=await adminCall('list');
+        document.getElementById('adminTotal').textContent=data.students?.length||0;
+        const rows=document.getElementById('adminStudentRows');
+        if(!data.students?.length){ rows.innerHTML='<tr><td colspan="6" class="text-center text-slate-400 py-8">还没有学生账号。</td></tr>'; return; }
+        rows.innerHTML=data.students.map(s=>{
+          const status=s.active===false?'<span class="admin-pill off">已停用</span>':'<span class="admin-pill on">正常</span>';
+          const last=s.last_sign_in_at?s.last_sign_in_at.replace('T',' ').slice(0,16):'—';
+          const toggle=s.active===false?`<button onclick="adminToggleStudent('${escapeHtml(s.id)}',true)" class="px-2 py-1 rounded bg-emerald-50 text-emerald-700">恢复</button>`:`<button onclick="adminToggleStudent('${escapeHtml(s.id)}',false)" class="px-2 py-1 rounded bg-amber-50 text-amber-700">停用</button>`;
+          return `<tr><td class="font-bold">${escapeHtml(s.student_name||'—')}</td><td>${escapeHtml(s.student_no||'—')}</td><td>${status}</td><td>${s.submission_count||0} 次</td><td>${escapeHtml(last)}</td><td><div class="flex flex-wrap gap-1.5">${toggle}<button onclick="adminResetPassword('${escapeHtml(s.id)}','${escapeHtml(s.student_no)}')" class="px-2 py-1 rounded bg-slate-100 text-slate-600">改密码</button><button onclick="adminDeleteStudent('${escapeHtml(s.id)}','${escapeHtml(s.student_no)}')" class="px-2 py-1 rounded bg-rose-50 text-rose-700">永久删除</button></div></td></tr>`;
+        }).join('');
+      }catch(e){ adminMsg(e.message||'读取学生列表失败'); }
+    }
+    async function adminCreateStudent(){
+      const name=document.getElementById('adminStudentName').value.trim();
+      const no=document.getElementById('adminStudentNo').value.trim();
+      const password=document.getElementById('adminStudentPassword').value;
+      if(!name||!no||password.length<6) return adminMsg('请填写姓名、学号，并设置至少6位初始密码。');
+      try{ await adminCall('create',{student_name:name,student_no:no,password}); adminMsg(`学生 ${name} 创建成功。`,true); document.getElementById('adminStudentName').value=''; document.getElementById('adminStudentNo').value=''; document.getElementById('adminStudentPassword').value=''; await adminLoadStudents(); }
+      catch(e){ adminMsg(e.message||'创建失败'); }
+    }
+    async function adminBulkCreate(){
+      const raw=document.getElementById('adminBulkCsv').value.trim(); if(!raw) return adminMsg('请先粘贴批量名单。');
+      const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean); const students=[];
+      for(let i=0;i<lines.length;i++){ const parts=lines[i].split(',').map(x=>x.trim()); if(i===0 && /姓名|student/i.test(parts[0]||'')) continue; if(parts.length<3) return adminMsg(`第 ${i+1} 行格式不正确，应为：姓名,学号,初始密码`); students.push({student_name:parts[0],student_no:parts[1],password:parts[2]}); }
+      try{ const data=await adminCall('bulk_create',{students}); adminMsg(`批量完成：成功 ${data.created||0} 个，失败 ${data.failed?.length||0} 个。`,true); document.getElementById('adminBulkCsv').value=''; if(data.failed?.length) console.warn('批量创建失败明细',data.failed); await adminLoadStudents(); }
+      catch(e){ adminMsg(e.message||'批量创建失败'); }
+    }
+    async function adminToggleStudent(id,active){
+      if(!confirm(active?'确定恢复这个学生账号吗？':'确定停用这个学生账号吗？')) return;
+      try{ await adminCall('set_active',{user_id:id,active}); adminMsg(active?'账号已恢复。':'账号已停用。',true); await adminLoadStudents(); }catch(e){ adminMsg(e.message||'操作失败'); }
+    }
+    async function adminResetPassword(id,no){
+      const password=prompt(`为学号 ${no} 设置新密码（至少6位）：`); if(password===null) return; if(password.length<6) return alert('密码至少6位。');
+      try{ await adminCall('reset_password',{user_id:id,password}); adminMsg(`学号 ${no} 的密码已更新。`,true); }catch(e){ adminMsg(e.message||'修改密码失败'); }
+    }
+    async function adminDeleteStudent(id,no){
+      if(!confirm(`确定永久删除学号 ${no} 吗？\n\n这会删除登录账号；根据当前数据库级联规则，相关考试记录/草稿也可能一起删除。\n\n如果只是暂时不让学生登录，请使用“停用”。`)) return;
+      if(!confirm('再次确认：永久删除不可恢复。')) return;
+      try{ await adminCall('delete',{user_id:id}); adminMsg(`学号 ${no} 已永久删除。`,true); await adminLoadStudents(); }catch(e){ adminMsg(e.message||'删除失败'); }
     }
 
     async function logoutStudent() {
