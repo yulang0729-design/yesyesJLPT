@@ -97,7 +97,7 @@
       <div class="flex items-center space-x-2 sm:space-x-3">
         <div id="studentChip" class="student-chip">👤 <span id="studentChipText">未登录</span></div>
         <button id="historyBtn" onclick="openHistory()" class="hidden px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition">📊 记录</button>
-        <button id="loginBtn" onclick="openAuth('login')" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition">学生登录</button>
+        <button id="loginBtn" onclick="openAuth()" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition">学生登录</button>
         <button id="logoutBtn" onclick="logoutStudent()" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition">退出</button>
 
         <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 font-mono text-sm">
@@ -142,20 +142,16 @@
     </div>
   </header>
 
-  <!-- Student Login / Register -->
+  <!-- Student Login -->
   <div id="authOverlay" class="auth-overlay hidden">
     <div class="auth-card">
       <div class="flex items-start justify-between mb-5">
         <div><div class="text-xs font-bold tracking-wider text-indigo-600 uppercase">YESYES JLPT</div><h2 class="text-xl font-black text-slate-900 mt-1">学生学习账号</h2><p class="text-xs text-slate-500 mt-1">登录后，成绩、答题记录和历史模考都会保存到你的账号。</p></div>
         <button onclick="closeAuth()" class="text-slate-400 hover:text-slate-700 text-xl">×</button>
       </div>
-      <div class="flex gap-1 bg-slate-50 p-1 rounded-xl mb-5">
-        <button id="authLoginTab" class="auth-tab active flex-1" onclick="setAuthMode('login')">登录</button>
-        <button id="authRegisterTab" class="auth-tab flex-1" onclick="setAuthMode('register')">注册</button>
-      </div>
-      <div id="registerNameWrap" class="hidden mb-3">
-        <label class="block text-xs font-semibold text-slate-600 mb-1.5">学生姓名</label>
-        <input id="studentNameInput" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-200" placeholder="例如：张三">
+      <div class="mb-5 rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3">
+        <div class="text-xs font-bold text-indigo-700">学生账号由老师统一创建</div>
+        <div class="text-[11px] text-indigo-600/80 mt-1 leading-relaxed">请使用老师提供的学号和初始密码登录。如忘记密码，请联系老师重置。</div>
       </div>
       <div class="mb-3">
         <label class="block text-xs font-semibold text-slate-600 mb-1.5">学号</label>
@@ -163,11 +159,11 @@
       </div>
       <div class="mb-3">
         <label class="block text-xs font-semibold text-slate-600 mb-1.5">密码</label>
-        <input id="studentPasswordInput" type="password" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-200" placeholder="至少6位" autocomplete="current-password">
+        <input id="studentPasswordInput" type="password" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-200" placeholder="请输入密码" autocomplete="current-password">
       </div>
       <div id="authMessage" class="hidden mb-3 text-xs rounded-xl p-3"></div>
       <button id="authSubmitBtn" onclick="submitAuth()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition">登录</button>
-      <p class="text-[11px] text-slate-400 leading-relaxed mt-4">学生账号只用于区分学习记录。正式给学生使用前，请在 Supabase 开启邮箱/密码登录并关闭“必须确认邮箱”，本系统会把学号映射成内部账号邮箱，不要求学生填写真实邮箱。</p>
+      <p class="text-[11px] text-slate-400 leading-relaxed mt-4">本系统不要求学生填写真实邮箱。后台创建账号时，老师只需为学生设置学号和密码；网页会自动用学号匹配对应账号。</p>
     </div>
   </div>
 
@@ -671,7 +667,6 @@
     let isSubmitted = false;
     let timerSeconds = 140 * 60; // 140分钟
     let timerInterval = null;
-    let authMode = 'login';
     let currentStudent = null;
     let examStartedAt = Date.now();
     let draftSaveTimer = null;
@@ -688,56 +683,43 @@
       el.className = `mb-3 text-xs rounded-xl p-3 ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`;
     }
 
-    function openAuth(mode='login') {
-      setAuthMode(mode);
+    function openAuth() {
       document.getElementById('authOverlay').classList.remove('hidden');
+      document.getElementById('studentNoInput')?.focus();
     }
     function closeAuth() { document.getElementById('authOverlay').classList.add('hidden'); }
-    function setAuthMode(mode) {
-      authMode = mode;
-      document.getElementById('authLoginTab').classList.toggle('active', mode === 'login');
-      document.getElementById('authRegisterTab').classList.toggle('active', mode === 'register');
-      document.getElementById('registerNameWrap').classList.toggle('hidden', mode !== 'register');
-      document.getElementById('authSubmitBtn').textContent = mode === 'register' ? '创建学生账号' : '登录';
-      document.getElementById('authMessage').className = 'hidden mb-3 text-xs rounded-xl p-3';
-    }
 
     async function submitAuth() {
       if (!supabaseClient) return showAuthMessage('Supabase 未加载，请检查网络连接。');
       const studentNo = document.getElementById('studentNoInput').value.trim();
       const password = document.getElementById('studentPasswordInput').value;
-      const studentName = document.getElementById('studentNameInput').value.trim();
-      if (!studentNo || password.length < 6 || (authMode === 'register' && !studentName)) {
-        return showAuthMessage(authMode === 'register' ? '请填写姓名、学号，并设置至少6位密码。' : '请输入学号和至少6位密码。');
+      if (!studentNo || password.length < 6) {
+        return showAuthMessage('请输入学号和至少6位密码。');
       }
       const btn = document.getElementById('authSubmitBtn');
       btn.disabled = true; btn.classList.add('opacity-60');
       try {
         const email = studentEmail(studentNo);
-        let result;
-        if (authMode === 'register') {
-          result = await supabaseClient.auth.signUp({ email, password, options: { data: { student_no: studentNo, student_name: studentName } } });
-          if (result.error) throw result.error;
-          if (!result.data.session) {
-            showAuthMessage('账号已创建。请先在 Supabase 关闭“Confirm email”，然后重新登录；如果已关闭，现在可直接登录。', true);
-            setAuthMode('login');
-            return;
-          }
-          currentStudent = { id: result.data.user.id, student_no: studentNo, student_name: studentName };
-          await ensureStudentProfile(result.data.user, studentNo, studentName);
-        } else {
-          result = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (result.error) throw result.error;
-          const user = result.data.user;
-          currentStudent = { id: user.id, student_no: user.user_metadata?.student_no || studentNo, student_name: user.user_metadata?.student_name || studentNo };
-          await ensureStudentProfile(user, currentStudent.student_no, currentStudent.student_name);
-          await loadDraft();
-        }
+        const result = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (result.error) throw result.error;
+        const user = result.data.user;
+        currentStudent = {
+          id: user.id,
+          student_no: user.user_metadata?.student_no || studentNo,
+          student_name: user.user_metadata?.student_name || studentNo
+        };
+        await ensureStudentProfile(user, currentStudent.student_no, currentStudent.student_name);
+        await loadDraft();
         updateStudentUI();
         closeAuth();
         showToast(`欢迎回来，${currentStudent.student_name}`);
       } catch (e) {
-        showAuthMessage(e.message || '登录失败，请检查学号和密码。');
+        const msg = String(e.message || '登录失败，请检查学号和密码。');
+        if (/invalid login credentials/i.test(msg)) {
+          showAuthMessage('学号或密码不正确。请确认老师提供的账号信息。');
+        } else {
+          showAuthMessage(msg);
+        }
       } finally {
         btn.disabled = false; btn.classList.remove('opacity-60');
       }
@@ -801,7 +783,7 @@
     }
 
     async function openHistory() {
-      if (!currentStudent) return openAuth('login');
+      if (!currentStudent) return openAuth();
       document.getElementById('historyOverlay').classList.add('show');
       document.getElementById('historyContent').innerHTML = '<div class="text-sm text-slate-400">正在加载记录…</div>';
       document.getElementById('historyStudentLabel').textContent = `${currentStudent.student_name} · 学号 ${currentStudent.student_no}`;
@@ -1095,7 +1077,7 @@
 
     function submitExam() {
       if (!currentStudent) {
-        openAuth('login');
+        openAuth();
         showToast('请先登录学生账号，交卷后成绩才能进入个人记录');
         return;
       }
