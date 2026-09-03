@@ -85,6 +85,35 @@
 .admin-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}
 .admin-pill.on{background:#ecfdf5;color:#047857}.admin-pill.off{background:#fff1f2;color:#be123c}
 @media(max-width:800px){.admin-grid{grid-template-columns:1fr}.admin-card{margin:4px auto}.admin-body{padding:12px}}
+
+    .login-gate { min-height: 420px; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+    .login-gate-card { width:100%; max-width:520px; text-align:center; padding:36px 28px; border:1px solid #e2e8f0; border-radius:24px; background:#fff; box-shadow:0 10px 30px rgba(15,23,42,.06); }
+
+.admin-record-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:18px;margin-bottom:10px}
+.admin-record-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.admin-record-stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px}
+.admin-record-table{width:100%;border-collapse:separate;border-spacing:0}
+.admin-record-table th,.admin-record-table td{padding:9px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:11px;vertical-align:middle;white-space:nowrap}
+.admin-record-table th{color:#64748b;background:#f8fafc;font-weight:800;position:sticky;top:0}
+.admin-record-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:14px;max-height:430px}
+.admin-record-tabs{display:flex;gap:8px;margin:18px 0 10px}
+.admin-record-tab{padding:8px 12px;border-radius:10px;background:#f1f5f9;color:#64748b;font-size:12px;font-weight:800}
+.admin-record-tab.active{background:#4f46e5;color:#fff}
+.admin-wrong-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.admin-wrong-item{border:1px solid #fecdd3;background:#fff1f2;border-radius:12px;padding:9px}
+.admin-answer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.68);backdrop-filter:blur(5px);z-index:180;display:none;padding:14px;overflow:auto}
+.admin-answer-overlay.show{display:flex;align-items:flex-start;justify-content:center}
+.admin-answer-card{width:min(1000px,100%);margin:12px auto;background:#fff;border-radius:22px;box-shadow:0 30px 90px rgba(15,23,42,.35);overflow:hidden}
+.admin-answer-head{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-answer-body{padding:18px 20px}
+.admin-answer-section{margin-bottom:18px}
+.admin-answer-section h4{font-size:12px;font-weight:900;color:#334155;margin-bottom:8px}
+.admin-answer-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+.admin-answer-cell{border:1px solid #e2e8f0;border-radius:9px;padding:6px 3px;text-align:center;font-size:10px;line-height:1.2}
+.admin-answer-cell.ok{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+.admin-answer-cell.bad{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+.admin-answer-cell.blank{background:#f8fafc;color:#94a3b8}
+@media(max-width:800px){.admin-record-stats{grid-template-columns:1fr 1fr}.admin-wrong-grid{grid-template-columns:1fr}.admin-answer-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 </style>
 <!-- Supabase CDN 及客户端初始化 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -198,8 +227,43 @@
         <div class="admin-table-wrap">
           <table class="admin-table"><thead><tr><th>姓名</th><th>学号</th><th>状态</th><th>考试记录</th><th>最后登录</th><th>操作</th></tr></thead><tbody id="adminStudentRows"><tr><td colspan="6" class="text-center text-slate-400 py-8">暂无数据</td></tr></tbody></table>
         </div>
-        <div class="mt-3 text-[11px] text-slate-400 leading-relaxed">提示：停用账号不会删除成绩；“永久删除”会删除登录账号，并可能因数据库级联规则同时删除该学生的考试记录和草稿，请谨慎使用。</div>
+
+        <div class="admin-record-toolbar">
+          <div><div class="font-bold text-sm">📊 全员答题记录 & 错题统计</div><div class="text-[11px] text-slate-400 mt-1">管理员可以查看所有学生每次交卷的答题卡，并统计整套试卷中最常错的题。</div></div>
+          <button onclick="adminLoadRecords()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold">↻ 刷新答题记录</button>
+        </div>
+        <div class="admin-record-stats">
+          <div class="admin-record-stat"><div class="text-[11px] text-slate-500">提交次数</div><div id="adminRecordTotal" class="text-xl font-black mt-1">—</div></div>
+          <div class="admin-record-stat"><div class="text-[11px] text-slate-500">参与学生</div><div id="adminRecordStudents" class="text-xl font-black mt-1">—</div></div>
+          <div class="admin-record-stat"><div class="text-[11px] text-slate-500">平均分</div><div id="adminRecordAvg" class="text-xl font-black mt-1">—</div></div>
+          <div class="admin-record-stat"><div class="text-[11px] text-slate-500">最常错题</div><div id="adminTopWrong" class="text-xl font-black mt-1">—</div></div>
+        </div>
+        <div class="admin-record-tabs">
+          <button id="adminTabRecords" class="admin-record-tab active" onclick="switchAdminRecordTab('records')">交卷记录</button>
+          <button id="adminTabWrong" class="admin-record-tab" onclick="switchAdminRecordTab('wrong')">错题统计</button>
+        </div>
+        <div id="adminRecordsPanel">
+          <div class="admin-record-table-wrap">
+            <table class="admin-record-table"><thead><tr><th>学生</th><th>学号</th><th>提交时间</th><th>总分</th><th>结果</th><th>作答</th><th>用时</th><th>答题卡</th></tr></thead><tbody id="adminRecordRows"><tr><td colspan="8" class="text-center text-slate-400 py-8">点击“刷新答题记录”加载</td></tr></tbody></table>
+          </div>
+        </div>
+        <div id="adminWrongPanel" class="hidden">
+          <div id="adminWrongList" class="admin-wrong-grid"></div>
+        </div>
+
+        <div class="mt-3 text-[11px] text-slate-400 leading-relaxed">提示：这里展示的是学生已经“交卷”的记录；未交卷草稿不会计入错题统计。停用账号不会删除成绩；“永久删除”会删除登录账号，并可能因数据库级联规则同时删除该学生的考试记录和草稿，请谨慎使用。</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Admin Answer Detail -->
+  <div id="adminAnswerOverlay" class="admin-answer-overlay">
+    <div class="admin-answer-card">
+      <div class="admin-answer-head">
+        <div><div class="text-xs font-bold tracking-wider text-indigo-600 uppercase">ANSWER SHEET</div><h2 id="adminAnswerTitle" class="text-lg font-black text-slate-900 mt-1">答题卡</h2><p id="adminAnswerMeta" class="text-xs text-slate-500 mt-1"></p></div>
+        <button onclick="closeAdminAnswer()" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-600">关闭</button>
+      </div>
+      <div id="adminAnswerBody" class="admin-answer-body"></div>
     </div>
   </div>
 
@@ -774,6 +838,11 @@
         await ensureStudentProfile(user, currentStudent.student_no, currentStudent.student_name);
         await loadDraft();
         updateStudentUI();
+        examStartedAt = Date.now();
+        startTimer();
+        renderQuestions();
+        updatePaletteGrid();
+        updateAnswerSummary();
         closeAuth();
         showToast(`欢迎回来，${currentStudent.student_name}`);
       } catch (e) {
@@ -790,7 +859,7 @@
 
     async function ensureStudentProfile(user, studentNo, studentName) {
       if (!supabaseClient || !user) return;
-      const { error } = await supabaseClient.from('jlpt_students').upsert({ id: user.id, student_no: studentNo, student_name: studentName }, { onConflict: 'id' });
+      const { error } = await supabaseClient.from('jlpt_students').update({ student_no: studentNo, student_name: studentName }).eq('id', user.id);
       if (error) console.warn('学生档案同步失败:', error.message);
     }
 
@@ -800,7 +869,14 @@
       document.getElementById('logoutBtn').classList.toggle('hidden', !logged);
       document.getElementById('historyBtn').classList.toggle('hidden', !logged);
       document.getElementById('studentChip').classList.toggle('show', logged);
-      if (logged) document.getElementById('studentChipText').textContent = `${currentStudent.student_name} · ${currentStudent.student_no}`;
+      if (logged) {
+        document.getElementById('studentChipText').textContent = `${currentStudent.student_name} · ${currentStudent.student_no}`;
+      } else {
+        document.getElementById('studentChipText').textContent = '未登录';
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        renderQuestions();
+        updatePaletteGrid();
+      }
     }
 
     const ADMIN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/admin-student-manager`;
@@ -827,6 +903,7 @@
         document.getElementById('adminOverlay').classList.add('show');
         adminMsg('管理员验证成功。',true);
         await adminLoadStudents();
+        await adminLoadRecords();
       }catch(e){ adminSessionPassword=''; alert(e.message||'管理员验证失败。'); }
     }
     function closeAdminPanel(){ document.getElementById('adminOverlay').classList.remove('show'); adminSessionPassword=''; }
@@ -872,6 +949,121 @@
       if(!confirm('再次确认：永久删除不可恢复。')) return;
       try{ await adminCall('delete',{user_id:id}); adminMsg(`学号 ${no} 已永久删除。`,true); await adminLoadStudents(); }catch(e){ adminMsg(e.message||'删除失败'); }
     }
+
+    let adminRecordsCache = [];
+
+    function adminExamQuestions(){
+      return [
+        ...EXAM_DATA.vocab.map(q=>({...q,category:'vocab',label:'文字・語彙',globalId:q.id})),
+        ...EXAM_DATA.grammar.map(q=>({...q,category:'grammar',label:'文法・読解',globalId:35+q.id})),
+        ...EXAM_DATA.listening.map(q=>({...q,category:'listening',label:'聴解',globalId:73+q.id}))
+      ];
+    }
+
+    function normalizeAdminAnswers(a){
+      if(!a) return {vocab:{},grammar:{},listening:{}};
+      if(typeof a==='string'){ try{return JSON.parse(a)||{vocab:{},grammar:{},listening:{}};}catch(e){return {vocab:{},grammar:{},listening:{}};} }
+      return a;
+    }
+
+    function switchAdminRecordTab(tab){
+      const records=document.getElementById('adminRecordsPanel');
+      const wrong=document.getElementById('adminWrongPanel');
+      document.getElementById('adminTabRecords').classList.toggle('active',tab==='records');
+      document.getElementById('adminTabWrong').classList.toggle('active',tab==='wrong');
+      records.classList.toggle('hidden',tab!=='records');
+      wrong.classList.toggle('hidden',tab!=='wrong');
+    }
+
+    async function adminLoadRecords(){
+      try{
+        const data=await adminCall('records',{exam_key:EXAM_KEY});
+        adminRecordsCache=Array.isArray(data.records)?data.records:[];
+        renderAdminRecords();
+        renderAdminWrongStats();
+      }catch(e){ adminMsg(e.message||'读取答题记录失败'); }
+    }
+
+    function formatAdminDate(v){
+      if(!v) return '—';
+      try{return new Date(v).toLocaleString('zh-CN',{hour12:false});}catch(e){return String(v).replace('T',' ').slice(0,19);}
+    }
+
+    function adminTime(sec){
+      sec=Math.max(0,Number(sec)||0);
+      const m=Math.floor(sec/60), s=sec%60;
+      return `${m}分${String(s).padStart(2,'0')}秒`;
+    }
+
+    function renderAdminRecords(){
+      const rows=document.getElementById('adminRecordRows');
+      const records=adminRecordsCache;
+      document.getElementById('adminRecordTotal').textContent=records.length;
+      const unique=new Set(records.map(r=>r.user_id).filter(Boolean));
+      document.getElementById('adminRecordStudents').textContent=unique.size;
+      const avg=records.length?records.reduce((n,r)=>n+(Number(r.total_score)||0),0)/records.length:0;
+      document.getElementById('adminRecordAvg').textContent=records.length?avg.toFixed(1):'—';
+      if(!records.length){ rows.innerHTML='<tr><td colspan="8" class="text-center text-slate-400 py-8">还没有已交卷记录。</td></tr>'; return; }
+      rows.innerHTML=records.map((r,i)=>{
+        const pass=r.passed?'<span class="admin-pill on">合格</span>':'<span class="admin-pill off">未合格</span>';
+        const answers=normalizeAdminAnswers(r.user_answers);
+        const answered=['vocab','grammar','listening'].reduce((n,k)=>n+Object.keys(answers[k]||{}).length,0);
+        return `<tr><td class="font-bold">${escapeHtml(r.student_name||'—')}</td><td>${escapeHtml(r.student_no||'—')}</td><td>${escapeHtml(formatAdminDate(r.submitted_at))}</td><td class="font-black">${Number(r.total_score)||0}/180</td><td>${pass}</td><td>${answered}/101</td><td>${adminTime(r.time_spent_seconds)}</td><td><button onclick="adminViewAnswer(${i})" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 font-bold">查看答题卡</button></td></tr>`;
+      }).join('');
+    }
+
+    function renderAdminWrongStats(){
+      const qs=adminExamQuestions();
+      const counts=new Map();
+      qs.forEach(q=>counts.set(q.globalId,{q,wrong:0,answered:0}));
+      for(const r of adminRecordsCache){
+        const a=normalizeAdminAnswers(r.user_answers);
+        for(const q of qs){
+          const selected=a[q.category]?.[q.id];
+          if(selected!==undefined && selected!==null && selected!==''){
+            const item=counts.get(q.globalId);
+            item.answered++;
+            if(Number(selected)!==Number(q.correct)) item.wrong++;
+          }
+        }
+      }
+      const arr=[...counts.values()].filter(x=>x.wrong>0).sort((a,b)=>b.wrong-a.wrong||b.wrong/(b.answered||1)-a.wrong/(a.answered||1));
+      document.getElementById('adminTopWrong').textContent=arr.length?`第${arr[0].q.globalId}题`:'—';
+      const el=document.getElementById('adminWrongList');
+      if(!arr.length){el.innerHTML='<div class="text-sm text-slate-400 py-8">目前没有统计到错题。需要至少有一次已交卷记录。</div>';return;}
+      el.innerHTML=arr.map(x=>{
+        const rate=x.answered?Math.round(x.wrong/x.answered*100):0;
+        return `<div class="admin-wrong-item"><div class="flex items-center justify-between gap-2"><div class="font-black text-rose-700">第${x.q.globalId}题 · ${escapeHtml(x.q.label)}</div><div class="text-xs font-black text-rose-600">错 ${x.wrong} 次</div></div><div class="text-[11px] text-slate-500 mt-1">作答 ${x.answered} 次 · 错误率 ${rate}% · 正确答案：选 ${x.q.correct}</div></div>`;
+      }).join('');
+    }
+
+    function adminViewAnswer(index){
+      const r=adminRecordsCache[index];
+      if(!r) return;
+      const a=normalizeAdminAnswers(r.user_answers);
+      document.getElementById('adminAnswerTitle').textContent=`${r.student_name||'学生'} · ${r.student_no||''} · 答题卡`;
+      document.getElementById('adminAnswerMeta').textContent=`${formatAdminDate(r.submitted_at)} · ${Number(r.total_score)||0}/180 · ${r.passed?'合格':'未合格'} · 用时 ${adminTime(r.time_spent_seconds)}`;
+      const sections=[
+        {key:'vocab',label:'文字・語彙',offset:0},
+        {key:'grammar',label:'文法・読解',offset:35},
+        {key:'listening',label:'聴解',offset:73}
+      ];
+      document.getElementById('adminAnswerBody').innerHTML=sections.map(sec=>{
+        const qs=EXAM_DATA[sec.key];
+        return `<div class="admin-answer-section"><h4>${sec.label}</h4><div class="admin-answer-grid">${qs.map(q=>{
+          const selected=a[sec.key]?.[q.id];
+          const gid=sec.offset+q.id;
+          const blank=selected===undefined||selected===null||selected==='';
+          const ok=!blank && Number(selected)===Number(q.correct);
+          const cls=blank?'blank':(ok?'ok':'bad');
+          const text=blank?'未答':`选${selected}${ok?' ✓':` · 答${q.correct}`}`;
+          return `<div class="admin-answer-cell ${cls}" title="第${gid}题｜${blank?'未作答':`选择${selected}｜正确答案${q.correct}`}"><b>${gid}</b><div class="mt-1">${text}</div></div>`;
+        }).join('')}</div></div>`;
+      }).join('');
+      document.getElementById('adminAnswerOverlay').classList.add('show');
+    }
+
+    function closeAdminAnswer(){document.getElementById('adminAnswerOverlay').classList.remove('show');}
 
     async function logoutStudent() {
       if (supabaseClient) await supabaseClient.auth.signOut();
@@ -966,7 +1158,6 @@
         examAudio.src = foundAudioSrc;
       }
 
-      startTimer();
       renderQuestions();
       updatePaletteGrid();
       updateAnswerSummary();
@@ -975,10 +1166,24 @@
         supabaseClient.auth.getSession().then(async ({ data }) => {
           if (data?.session?.user) {
             const u = data.session.user;
-            currentStudent = { id:u.id, student_no:u.user_metadata?.student_no || u.email?.split('@')[0] || '', student_name:u.user_metadata?.student_name || u.email?.split('@')[0] || '学生' };
+            const profileCheck = await supabaseClient.from('jlpt_students').select('student_name,student_no,active').eq('id', u.id).maybeSingle();
+            if (profileCheck.data?.active === false) {
+              await supabaseClient.auth.signOut();
+              currentStudent = null;
+              updateStudentUI();
+              openAuth();
+              showAuthMessage('该学生账号已被老师停用，请联系老师。');
+              return;
+            }
+            currentStudent = { id:u.id, student_no:profileCheck.data?.student_no || u.user_metadata?.student_no || u.email?.split('@')[0] || '', student_name:profileCheck.data?.student_name || u.user_metadata?.student_name || u.email?.split('@')[0] || '学生' };
             await ensureStudentProfile(u, currentStudent.student_no, currentStudent.student_name);
-            updateStudentUI();
             await loadDraft();
+            updateStudentUI();
+            examStartedAt = Date.now();
+            startTimer();
+            renderQuestions();
+            updatePaletteGrid();
+            updateAnswerSummary();
           }
         });
         supabaseClient.auth.onAuthStateChange((_event, session) => {
@@ -1004,6 +1209,11 @@
     }
 
     function switchCategory(catKey) {
+      if (!currentStudent) {
+        openAuth();
+        showToast('请先登录学生账号，登录后才能开始做题。');
+        return;
+      }
       currentCategory = catKey;
       ['vocab', 'grammar', 'listening'].forEach(key => {
         const tab = document.getElementById(`tab-${key}`);
@@ -1036,6 +1246,11 @@
     }
 
     function seekAudio(seconds) {
+      if (!currentStudent) {
+        openAuth();
+        showToast('请先登录学生账号，登录后才能使用听力练习。');
+        return;
+      }
       const audio = document.getElementById('examAudioPlayer');
       if (audio) {
         audio.currentTime = seconds;
@@ -1046,6 +1261,19 @@
     function renderQuestions() {
       const container = document.getElementById('questionsContainer');
       container.innerHTML = "";
+
+      if (!currentStudent) {
+        container.innerHTML = `
+          <div class="login-gate">
+            <div class="login-gate-card">
+              <div class="mx-auto mb-4 w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-3xl">🔒</div>
+              <h3 class="text-xl font-black text-slate-800">登录后开始考试</h3>
+              <p class="mt-2 text-sm text-slate-500 leading-6">本模拟考场仅限登录学生账号作答。登录后即可开始计时，答题进度和考试成绩也会自动保存到你的账号。</p>
+              <button onclick="openAuth()" class="mt-6 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm">学生登录</button>
+            </div>
+          </div>`;
+        return;
+      }
 
       if (currentCategory === 'listening') {
         renderListeningPdfMode(container);
@@ -1141,6 +1369,11 @@
     }
 
     function selectOption(category, qId, optionNum) {
+      if (!currentStudent) {
+        openAuth();
+        showToast('请先登录学生账号，登录后才能答题。');
+        return;
+      }
       if (isSubmitted) return; // 提交后锁定
 
       userAnswers[category][qId] = optionNum;
@@ -1170,6 +1403,11 @@
     function updatePaletteGrid() {
       const grid = document.getElementById('questionGrid');
       grid.innerHTML = "";
+
+      if (!currentStudent) {
+        grid.innerHTML = '<div class="col-span-full py-8 text-center text-sm text-slate-400">🔒 登录后解锁答题卡</div>';
+        return;
+      }
 
       const questions = EXAM_DATA[currentCategory];
 
@@ -1298,6 +1536,11 @@
     }
 
     function resetAnswers() {
+      if (!currentStudent) {
+        openAuth();
+        showToast('请先登录学生账号，登录后才能开始模考。');
+        return;
+      }
       if (!window.confirm("确定要清空所有答案并重新开始模考吗？")) return;
       userAnswers.vocab = {};
       userAnswers.grammar = {};
